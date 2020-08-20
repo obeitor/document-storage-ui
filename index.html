@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Masters Project - Document Manager</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="font-awesome.min.css">
+        <link rel="stylesheet" href="bootstrap.min.css">
+        
+        <!--JS imports-->
+        <script src="jquery.min.js"></script>
+        <script src="popper.min.js"></script>
+        <script src="bootstrap.min.js"></script>
+        <script src="react.development.js"></script>
+        <script src="react-dom.development.js"></script>
+        <script src="babel.js"></script>
+        <script src="prop-types.js"></script>
+        <script src="axios.min.js"></script>
+    </head>
+    <body>
+        <style>
+            body{
+                background-image: url(doc-bg-2.jpg);
+                background-color: bisque;
+                background-size: cover;
+            }
+            .nav-tabs > li a{
+                color: #f0f0f0;
+            }
+            .nav-tabs > li.active a{
+                color: #333232;
+            }
+        </style>
+        <div class="container-sm p-0 min-vh-100">
+            <header>
+                <nav class="navbar bg-dark navbar-expand-lg">
+                    <div class="container-fluid">
+                        <a class="navbar-brand text-light"><em class="fa fa-database fa-lg mr-2"></em>Doc Store</a>
+                        <ul class="nav nav-tabs bg-dark">
+                            <li class="nav-item">
+                                <a href="#download-page" class="nav-link active" data-toggle="tab">
+                                    <em class="fa fa-cloud-download mr-1"></em>
+                                    Download
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="#profile-page" class="nav-link" data-toggle="tab">
+                                    <em class="fa fa-user mr-1"></em>
+                                    Profile
+                                </a>
+                            </li>
+                        </ul>
+                        <span class="float-right p-1"><img src="nile-logo.png" height="50" width="65" alt="nile uni"/></span>
+                    </div>
+                </nav>
+            </header>
+            <div class="tab-content">
+                <div class="tab-pane fade show active container-fluid p-4 vh-100" id="download-page">
+                    <div class="row h-100 px-3">
+                        <div class="col-sm-8 m-auto p-0 card shadow-lg rounded">
+                            <div class="card-body m-3">
+                                <div class="input-group">
+                                    <input class="form-control form-control-lg" id="ext-hash" type="text" placeholder="Enter Document's Hash"/>
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary btn-block" type="button" onclick="extDownloadDocument()">
+                                            <em class="fa fa-download fa-lg"></em>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade container-fluid p-4 vh-100" id="profile-page"></div>
+            </div>
+        </div>
+        
+        <script type="text/babel">
+        function useLocalStorage(key, defaultValue = ''){
+            const [state, setState] = React.useState(e => window.localStorage.getItem(key) || defaultValue)
+            const handleChange = e => setName(e.target.value)
+            React.useEffect(() => {
+                    window.localStorage.setItem(key,state)
+            }, [key, state]) //array of dependencies that would change to call this useEffect
+
+            return [state, setState]
+        }
+
+        function LoadPage({message='Loading...'}){
+            return(
+                <div className='row h-100 p-4'>
+                    <div className='col-sm-6 m-auto p-4'><img src='loading.gif' alt={message} /></div>
+                </div>
+            )
+        }
+
+        function ErrorPage({message='Oops There was an error'}){
+            return(
+                <div className='row h-100 p-5'>
+                    <div className='col-sm-6 m-auto text-center'>
+                        <div className='badge badge-pill badge-danger p-3'>
+                            <i className='fa fa-exclamation-circle'></i>&nbsp;{message}&nbsp;<i className='fa fa-exclamation-circle'></i>
+                            </div>
+                        </div>
+                    </div>
+            )
+        }
+
+        function PrintHash({hash=''}){
+            return(<div className="p-1">{hash}</div>)
+        }
+
+        function ChainManager({
+            header,
+            printHashes=true
+        }){
+            const[error, setError] = React.useState(null)
+            const[chainValidation, setChainValidation] = React.useState('')
+            const[chain, setChain] = React.useState(null)
+
+            React.useEffect(() => {
+                if(printHashes){
+                    axios.get(baseUrl+'get-chain',{headers:header})
+                    .then(rsp => {
+                        if(rsp.status===200 && rsp.data.success){
+                            var cs = []
+                            for(var i =0; i<rsp.data.response.length;i++){
+                                cs.push(<PrintHash hash={rsp.data.response[i]} key={i} />)
+                            }
+                            if(cs.length===0){
+                                setError('There is no document on the system')
+                            }
+                            else{
+                                setChain(cs)
+                            }
+                        }
+                        else{
+                            setError(rsp.data.message)
+                        }
+                    })
+                    .catch(e => {
+                        setError("Failed to get chain")
+                    })
+                }
+                else{
+                    axios.get(baseUrl+'validate-chain',{headers:header})
+                    .then(rsp => {
+                        if(rsp.status===200 && rsp.data.success){
+                            var cs = []
+                            for(var i =0; i<rsp.data.response.length;i++){
+                                cs.push(<PrintHash hash={rsp.data.response[i]} key={i} />)
+                            }
+                            if(cs.length===0){
+                                setError('There is no document on the system')
+                            }
+                            else{
+                                setChain(cs)
+                            }
+                        }
+                        else{
+                            setError(rsp.data.message)
+                        }
+                    })
+                    .catch(e => {
+                        setError("Unable to validate chain")
+                    })
+                }
+            },[printHashes]);
+
+            
+            return(
+                <div className="card m-2 p-2 bg-dark text-light">
+                    <div className="p-1">{printHashes ? 'Printing Chain ->':'Validating Chain ->'}</div>
+                    {error ? <div className="p-1"></div> : chain}
+                </div>
+            )
+        }
+
+        function NewDocument({
+            header={},
+            dataContentType,
+            docLoadStatus
+        }){
+            const[fileName, setFilename] = React.useState('')
+            const[fileDesc, setFileDesc] = React.useState('')
+            const[file, setFile] = React.useState([])
+            const[saving, setSaving] = React.useState(false)
+            const[msg, setMsg] = React.useState('')
+
+            React.useEffect(() => {
+                if(saving){
+                    if(!file || file.length===0){
+                        setMsg('No File Selected')
+                        setSaving(false)
+                        return;
+                    }
+                    var formData = new FormData();
+                    formData.append('docname',fileName)
+                    formData.append('docdesc',fileDesc)
+                    formData.append('file',file)
+                    dataContentType()
+                    setMsg('Saving...')
+                    axios.post(baseUrl+'save-document',formData,{headers:header})
+                    .then(rsp => {
+                        if(rsp.status===200 && rsp.data.success){
+                            setFile(null)
+                            setFilename('')
+                            setFileDesc('')
+                            setMsg('SAVED!')
+                            setTimeout(() => {docLoadStatus('LOAD')},2000)
+                        }
+                        else{
+                            setMsg(rsp.data.message)
+                        }
+                        setSaving(false)
+                    }).catch(e => {
+                        setMsg("Failed to save file")
+                        setSaving(false)
+                    })
+                }
+
+            },[saving]);
+            function uploadFile(evt){
+                evt.preventDefault()
+                setSaving(true)
+            }
+
+            return(<>
+                <div className="card m-2 p-2 rounded">
+                    <div className="p-1">
+                        <span className="text-muted mr-1"><h5>New File</h5></span>
+                        <span className="badge badge-pill badge-warning p-1">{msg}</span>
+                        <span className="float-right">
+                            <button type="button" className="btn btn-success btn-block btn-sm" onClick={e => uploadFile(e)}>
+                                <em className="fa fa-cloud-upload"></em> UPLOAD
+                            </button>
+                        </span>
+                        <div className="row">
+                            <div className="form-group col-md-6 col-sm-12">
+                                <label htmlFor="dname">File Name</label>
+                                <input type="text" required value={fileName} onChange={e => setFilename(e.target.value)} 
+                                    className="form-control" placeholder="Enter File Name"/>
+                            </div>
+                            <div className="form-group col-md-6 col-sm-12">
+                                <label htmlFor="dname">File</label>
+                                <input type="file" onChange={e => setFile(e.target.files[0])} 
+                                    className="form-control" placeholder="Attach File"/>
+                            </div>
+                            <div className="form-group col-sm-12">
+                                <label htmlFor="dname">File description</label>
+                                <input type="text" required value={fileDesc} onChange={e => setFileDesc(e.target.value)}
+                                    className="form-control" placeholder="Enter File Description"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>)
+        }
+
+        function Document({
+            name='File Name',
+            ext='file',
+            desc='This file has no description',
+            hash=''
+        }){
+            return(<>
+                <div className="p-2 card bg-light border shadow rounded mb-1">
+                    <div>
+                    <span className="text-secondary float-left"><h5>{name}</h5></span>
+                    <span className="float-right">
+                        <button className="btn btn-success btn-sm" type="button" onClick={()=>{window.prompt('Copy Document Hash: CTRL+C and Enter',hash)}}>
+                            <em className="fa fa-share-alt mr-1"></em>
+                        </button>
+                        <button className="btn btn-outline-primary btn-sm ml-1" onClick={()=>{downloadDocument(hash)}} type="button">
+                            <em className="fa fa-cloud-download mr-1"></em>{ext.toUpperCase()}
+                        </button>
+                    </span></div>
+                    <div className="text-muted">{desc}</div>
+                </div>
+            </>)
+        }
+
+        function Documents({
+            header={},
+            updateDocumentCount,
+            dataContentType,
+            jsonContentType,
+            status='LOAD',
+            changeStatus
+        }){
+            const[documents, setDocuments] = React.useState(null)
+            const[errorMsg, setErrorMsg] = React.useState(null)
+
+            React.useEffect(() => {
+                if(status==='LOAD'){
+                    changeStatus('LOADING')
+                    jsonContentType
+                    axios.get(baseUrl+'documents',{headers:header})
+                    .then(rsp => {
+                        if(rsp.status === 200 && rsp.data.success && rsp.data.responseType==='LIST'){
+                            var flz = []
+                            for(var i=0;i<rsp.data.response.length;i++){
+                                var f = rsp.data.response[i]
+                                flz.push(
+                                    <Document 
+                                        name={f.documentName} 
+                                        ext={f.documentExt} 
+                                        desc={f.documentDesc} 
+                                        key={f.id} 
+                                        hash={f.documentHash} 
+                                    />);
+                            }
+                            setDocuments(flz)
+                            updateDocumentCount(flz.length)
+                            changeStatus('LOADED')
+                        }
+                        else if(rsp.status === 401){
+                            changeStatus('ERROR')
+                            setErrorMsg("Logged Out")
+                        }
+                        else{
+                            changeStatus('ERROR')
+                            setErrorMsg(rsp.data.message)
+                        }
+                    })
+                    .catch(e => {
+                        console.log(e.code)
+                        changeStatus('ERROR')
+                        setErrorMsg('Failed to retrieve your documents')
+                    })
+
+                }
+            },[status])
+
+            if(status==='LOADING' || status==='LOAD'){
+                return <LoadPage />
+            }
+            else if(status==='LOADED'){
+                return (<><div>
+                            <NewDocument 
+                                dataContentType={dataContentType}
+                                docLoadStatus={changeStatus}
+                                header={header}
+                            />
+                        </div>
+                        <div className="card m-2 p-2 rounded">
+                            <span className="text-muted mr-1"><h5>My Files</h5></span>
+                            {documents}
+                        </div></>)
+            }
+            if(status==='ERROR'){
+                return (<ErrorPage message={errorMsg} />)
+            }
+        }
+
+        function DocumentManager({
+            header={},
+            fullname='',
+            organization='',
+            dataContentType,
+            jsonContentType,
+            logOut
+        }){
+            const [documentCount, setDocumentCount] = React.useState(0)
+            const[docStatus, setDocStatus] = React.useState('LOAD')
+            const[page, setPage] = React.useState('DCS')
+
+            return(<>
+                <div className="row h-100 px-3">
+                    <div className="col-sm-12 m-1 p-0 card shadow rounded">
+                        <div className="card-header border bg-light">
+                            <span className="float-left text-info"><h5>{fullname}</h5></span>
+                            <span className="float-right">
+                                <button className="btn btn-info mr-1" onClick={() => {
+                                    setPage('DCS')
+                                    setDocStatus('LOAD')
+                                }}>
+                                    <em className="fa fa-files-o mr-1"></em>
+                                    Files
+                                    <span className="badge badge-light ml-1">{documentCount}</span>
+                                </button>
+                                <span className="dropdown mr-1">
+                                    <button className="btn btn-info dropdown-toggle" id="dropdownMenu" 
+                                        type="button" data-toggle="dropdown" aria-haspopup="true" 
+                                        aria-expanded="false">
+                                        <em className="fa fa-link"></em>
+                                    </button>
+                                    <div className="dropdown-menu" aria-labelledby="dropdownMenu">
+                                        <a className="dropdown-item" onClick={()=>setPage('LC')}>View Chain</a>
+                                        <a className="dropdown-item" onClick={()=>setPage('VC')}>Validate Chain</a>
+                                    </div>
+                                </span>
+                                <button className="btn btn-danger" type="button" onClick={logOut}>
+                                    <em className="fa fa-sign-out"></em>
+                                </button>
+                            </span>
+                        </div>
+                        <div className="card-body m-1">
+                            {page==='DCS'?<Documents 
+                                header={header} 
+                                updateDocumentCount={v => setDocumentCount(v)}
+                                jsonContentType={jsonContentType}
+                                dataContentType={dataContentType}
+                                status={docStatus}
+                                changeStatus={v => setDocStatus(v)}
+                            />:<ChainManager header={header} printHashes={page==='LC'} />}
+                        </div>
+                    </div>
+                </div>
+            </>)
+        }
+
+        function Register({
+            onLogin,
+            setUsernameValue
+        }){
+            const[firstname, setFirstname] = React.useState('')
+            const[lastname, setLastname] = React.useState('')
+            const[newUsername, setNewUsername] = React.useState('')
+            const[newPass, setNewPass] = React.useState('')
+            const[email, setEmail] = React.useState('')
+            const[confirmPass, setConfirmPass] = React.useState('')
+            const[registering, setRegistering] = React.useState(0)
+            const[errorMsg, setErrorMsg] = React.useState(null)
+
+            function registerNewUser(e){
+                e.preventDefault();
+                setRegistering(1)
+            }
+
+            React.useEffect(() => {
+                if(registering===1 && newPass===confirmPass && newUsername){
+                    axios
+                    .post(baseUrl+"register",{
+                        username:newUsername,
+                        password:newPass,
+                        firstname:firstname,
+                        lastname:lastname,
+                        email:email
+                    },requestOptions)
+                    .then(rsp => {
+                        if(rsp.status === 200 && rsp.data.success){
+                            setRegistering(2)
+                            setErrorMsg(null)
+                            setUsernameValue(rsp.data.response.username)
+                        }
+                        else{
+                            setRegistering(0)
+                            setErrorMsg(rsp.data.message)
+                        }
+                    })
+                    .catch(e => {
+                        setRegistering(0);
+                        setErrorMsg('Failed to register, try again please')
+                    })
+                }
+                else if(registering===1 && newPass!==confirmPass){
+                    setRegistering(0);
+                    setErrorMsg('Password does not match')
+                }
+            },[registering]);
+
+            return(<>
+                <div className="row h-100 px-5">
+                    <div className="col-sm-6 m-auto p-0 card shadow rounded">
+                        <form onSubmit={registerNewUser}>
+                            <div className="card-header border text-center text-light bg-info">
+                                <h5>User Registration</h5>
+                            </div>
+                            <div className="card-body m-3">
+                                <div className="form-group text-muted">
+                                    <label htmlFor="fname">First Name</label>
+                                    <input type="text" required placeholder="Enter Firstname" value={firstname} className="form-control" id="fname" onChange={e => setFirstname(e.target.value)} />
+                                </div>
+                                <div className="form-group text-muted">
+                                    <label htmlFor="lname">Last Name</label>
+                                    <input type="text" required placeholder="Enter Lastname" value={lastname} className="form-control" id="lname" onChange={e => setLastname(e.target.value)} />
+                                </div>
+                                <div className="form-group text-muted">
+                                    <label htmlFor="email">Email</label>
+                                    <input type="email" required placeholder="Enter Email" value={email} className="form-control" id="email" onChange={e => setEmail(e.target.value)} />
+                                </div>
+                                <div className="form-group text-muted">
+                                    <label htmlFor="uname">Username</label>
+                                    <input type="text" required placeholder="Enter Username" value={newUsername} className="form-control" id="uname" onChange={e => setNewUsername(e.target.value)} />
+                                </div>
+                                <div className="form-group text-muted">
+                                    <label htmlFor="pass1">Password</label>
+                                    <input type="password" required placeholder="Enter Password" value={newPass} className="form-control" id="pass1" onChange={e => setNewPass(e.target.value)} />
+                                </div>
+                                <div className="form-group text-muted">
+                                    <label htmlFor="pass2">Retype Password</label>
+                                    <input type="password" required placeholder="Re-enter Password" value={confirmPass} className="form-control" id="pass2" onChange={e => setConfirmPass(e.target.value)} />
+                                </div>
+                                <div className="text-danger text-center p-2">{errorMsg}</div>
+                                <div className="form-group px-5 row">
+                                    <button type="submit" className="btn btn-success btn-block col-sm-5" disabled={registering>0}>
+                                        {registering===1 ? (<span className="spinner-grow spinner-grow-sm"></span>) : (<></>)}
+                                        REGISTER{registering===2 ? 'ED':''}
+                                    </button>
+                                    <div className="col-sm-2"></div>
+                                    <button type="button" onClick={onLogin} className="btn btn-light btn-block col-sm-5">
+                                        LOGIN
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </>)
+        }
+
+        function Login({
+            username='',
+            password='',
+            onUsernameChange,
+            onPasswordChange,
+            onLoginChange,
+            onRegister,
+            error,
+            loggingIn=false
+        }){
+            return (
+                    <>
+                    <div className="row h-100 px-5">
+      <div className="col-sm-6 m-auto p-0 card shadow rounded">
+        <form onSubmit={onLoginChange}>
+          <div className="card-header border text-center text-light bg-info">
+            <h5>User Login</h5>
+          </div>
+          <div className="card-body m-3">
+            <div className="form-group text-muted">
+              <label htmlFor="username">Username </label>
+              <input
+                type="text"
+                value={username}
+                className="form-control"
+                id="username"
+                onChange={onUsernameChange}
+              />
+            </div>
+            <div className="form-group text-muted">
+              <label htmlFor="pwd">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                className="form-control"
+                id="pwd"
+                onChange={onPasswordChange}
+              />
+            </div>
+            <div className="text-danger text-center p-2">{error}</div>
+            <div className="form-group px-5 row">
+              <button
+                type="submit"
+                className="btn btn-success btn-block col-sm-5"
+                disabled={loggingIn}
+              >
+                {loggingIn ? (
+                  <span className="spinner-grow spinner-grow-sm" />
+                ) : (
+                  <></>
+                )}
+                LOGIN
+              </button>
+              <div className='col-sm-2'></div>
+              <button
+                type="button" onClick={onRegister} className="btn btn-light btn-block col-sm-5">REGISTER</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+                    </>)
+        }
+
+        function App(){
+            const [token, setToken] = useLocalStorage('token',null);
+            const [tokenTimeout, setTokenTimeout] = React.useState(0)
+            const [validToken,setValidToken] = React.useState(false);
+            const [username, setUsername] = useLocalStorage('username');
+            const [password, setPassword] = React.useState('');
+            const [error, setError] = React.useState(null);
+            const [loggingIn, setLoggingIn] = React.useState(false)
+            const [registerLogin, setRegisterLogin] = useLocalStorage('regOrLogin','REGISTER')
+            const [requestHeader, setRequestHeader] = React.useState({"Content-Type":"application/json","Client-Key":"J@m33l@"})
+            const [fullname, setFullname] = React.useState(null)
+            const [organization, setOrganization] = React.useState(null)
+
+            function onLogin(e){
+                e.preventDefault();
+                setLoggingIn(true)
+            }
+            
+
+            React.useEffect(() => {
+                
+                if(loggingIn && username && password){
+                    setError(null)
+                    axios
+                    .post(baseUrl+"login",{username:username,password:password},requestOptions)
+                    .then(rsp => {
+                        setPassword('')
+                        if(rsp.status === 200 && rsp.data.success){
+                            setToken(JSON.stringify(rsp.data.response))
+                        }
+                        else{
+                            setError(rsp.data.message)
+                        }
+                    })
+                    .catch(e => {
+                        setError("Failed to login. Please try again")
+                    })
+                    setLoggingIn(false)
+                }
+                else if(loggingIn && !username){
+                    setError('Please enter a username');
+                    setLoggingIn(false)
+                }
+                else if(loggingIn && !password){
+                    setError("Please enter a password")
+                    setLoggingIn(false)
+                }
+            },[loggingIn]);
+            React.useEffect(() => {
+                if(token){
+                    var tokenObject = JSON.parse(token);
+                    if(tokenObject && tokenObject.expiry && tokenObject.expiry >= (new Date().getTime())){
+                        setRequestHeader(prev => ({...prev,['Authorization']:'Bearer '+tokenObject.token}))
+                        setValidToken(true)
+                        setFullname(tokenObject.firstname + ' ' + tokenObject.lastname)
+                        setOrganization(tokenObject.organization)
+                        setInterval(()=>{setTokenTimeout(t => t+1)},60000)
+                        return;
+                    }
+                }
+                if(tokenTimeout !== 0){
+                    setError('Your token has expired and you have been signed out!')
+                }
+                setValidToken(false)
+            },[token,tokenTimeout])
+
+            if(validToken){
+                return (
+                        <>
+                            <DocumentManager 
+                                header={requestHeader}
+                                dataContentType={() => setRequestHeader(p => ({...p,['Content-Type']:'multipart/form-data'}))}
+                                jsonContentType={() => setRequestHeader(p => ({...p,['Content-Type']:'application/json'}))}
+                                fullname={fullname}
+                                organization={organization}
+                                logOut={() => {setToken(null)}}
+                            />
+                        </>)
+            }
+            
+            if(registerLogin==='REGISTER'){
+                return(
+                    <>
+                        <Register 
+                            onLogin={() => setRegisterLogin('LOGIN')} 
+                            setUsernameValue={v => setUsername(v)}
+                        />
+                    </>
+                )
+            }
+            else{
+                return(
+                <>
+                <Login 
+                    username={username} 
+                    password={password} 
+                    onLoginChange={e => onLogin(e)}
+                    onPasswordChange={e => setPassword(e.target.value)}
+                    onUsernameChange={e => setUsername(e.target.value)}
+                    error={error}
+                    onRegister={() => setRegisterLogin('REGISTER')}
+                    loggingIn={loggingIn}
+                     />
+                </>)
+            }
+        }
+
+        ReactDOM.render(
+                <React.StrictMode>
+                    <App />
+                </React.StrictMode>, document.getElementById("profile-page"))
+
+const requestOptions = {
+  headers: {
+    "Content-Type": "application/json",
+    "Client-Key": "J@m33l@"
+  }
+};
+
+const baseUrl = "http://localhost:9001/app/";
+
+function downloadDocument(hash){
+    console.log(requestOptions)
+    axios.get(baseUrl+"ipfs/download/"+hash,requestOptions)
+    .then(rsp => {
+        console.log(rsp)
+        if(rsp.status===200 && rsp.data.success){
+            window.open(rsp.data.response,'_blank')
+        }
+        else{   
+            alert(rsp.data.message)
+        }
+    }).catch(e => {
+        alert('Failed to download file')
+    })
+}
+
+function extDownloadDocument(){
+    var hash = document.getElementById('ext-hash').value;
+    downloadDocument(hash);
+}
+        </script>
+
+    </body>
+</html>
